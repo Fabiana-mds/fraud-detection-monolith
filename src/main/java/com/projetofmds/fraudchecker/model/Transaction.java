@@ -1,0 +1,53 @@
+package com.projetofmds.fraudchecker.model;
+
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import lombok.*;
+import jakarta.persistence.*;
+
+import com.projetofmds.fraudchecker.model.enums.TransactionStatus;
+import com.projetofmds.fraudchecker.model.enums.TransactionType;
+
+@Entity
+@Table(name = "Transactions")
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+
+public class Transaction {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include    
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
+
+    @Column(nullable = false)
+    private BigDecimal baseRiskScore;
+
+    @Column(nullable = false)
+    private LocalDateTime timestamp;
+
+    @Enumerated(EnumType.STRING) 
+    @Column(nullable = false)
+    private TransactionType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransactionStatus status;
+
+    @PrePersist
+    protected void  onCreate() {
+        this.timestamp = LocalDateTime.now();
+        if(this.status == null) {
+            this.status = TransactionStatus.PENDING;
+        }
+    }
+
+
+}
