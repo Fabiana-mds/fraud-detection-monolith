@@ -1,7 +1,8 @@
 package com.projetofmds.fraudchecker.controller;
 
 import com.projetofmds.fraudchecker.model.Account;
-import com.projetofmds.fraudchecker.repository.AccountRepository;
+import com.projetofmds.fraudchecker.service.AccountService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,18 +15,18 @@ import java.util.List;
 @RequiredArgsConstructor 
 public class AccountController {
 
-    private final AccountRepository accountRepository;
+    private final AccountService accountService;
 
     // 1. Endpoint para criar uma conta
     @PostMapping
     public ResponseEntity<Account> createAccount(@RequestBody Account account) {
-        Account savedAccount = accountRepository.save(account);
+        Account savedAccount = accountService.createAccount(account);
         return new ResponseEntity<>(savedAccount, HttpStatus.CREATED);
     }
 
     // 2. Endpoint para listar todas as contas
     @GetMapping
     public List<Account> getAllAccounts() {
-        return accountRepository.findAll();
+        return accountService.getAllAccounts();
     }
 }
