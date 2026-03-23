@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import lombok.*;
 import jakarta.persistence.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.projetofmds.fraudchecker.model.enums.TransactionStatus;
 import com.projetofmds.fraudchecker.model.enums.TransactionType;
 
@@ -23,12 +24,16 @@ public class Transaction {
     @EqualsAndHashCode.Include    
     private Long id;
 
+    @JsonIgnoreProperties("transactions")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
     @Column(nullable = false)
     private BigDecimal baseRiskScore;
+
+    @Column(nullable = false)
+    private BigDecimal amount;
 
     @Column(nullable = false)
     private LocalDateTime timestamp;

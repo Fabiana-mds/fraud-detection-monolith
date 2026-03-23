@@ -3,6 +3,8 @@ package com.projetofmds.fraudchecker.model;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +32,7 @@ public class Account {
     @Column(nullable = false)
     private BigDecimal baseRiskScore;
 
+    @JsonIgnoreProperties("account")
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
     private List<Transaction> transaction;
 
