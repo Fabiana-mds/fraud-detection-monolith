@@ -11,7 +11,7 @@ import com.projetofmds.fraudchecker.dto.TransactionEvent;
 import com.projetofmds.fraudchecker.dto.TransactionRequest;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher; // IMPORTANTE
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,9 +27,8 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final List<RiskRuleChecker> riskRules;
-    private final ApplicationEventPublisher eventPublisher; // O "estilingue" de eventos
+    private final ApplicationEventPublisher eventPublisher;
 
-    // 1. MÉTODO RÁPIDO: Salva como PENDING e avisa o sistema
     @Transactional
     public Transaction processTransaction(TransactionRequest request) {
         Account account = accountRepository.findById(request.accountId())
@@ -40,14 +39,12 @@ public class TransactionService {
             .type(TransactionType.valueOf(request.typeString()))
             .account(account)
             .timestamp(LocalDateTime.now())
-            .status(TransactionStatus.PENDING) // Começa Pendente
+            .status(TransactionStatus.PENDING)
             .baseRiskScore(BigDecimal.ZERO)
             .build();
 
-        // Salva rápido no banco
         Transaction saved = transactionRepository.save(transaction);
 
-        // Dispara o evento para o Listener trabalhar em background
         eventPublisher.publishEvent(new TransactionEvent(
             saved.getId(), 
             account.getId(), 
@@ -57,25 +54,26 @@ public class TransactionService {
         return saved;
     }
 
-    // 2. MÉTODO ASSÍNCRONO: Chamado pelo Listener para calcular o risco
-   @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void analyzeRisk(TransactionEvent event) {
-        // Busca a transação que acabou de ser salva
         Transaction transaction = transactionRepository.findById(event.transactionId())
                 .orElseThrow(() -> new RuntimeException("Transação não encontrada no processamento posterior"));
         
         Account account = transaction.getAccount();
 
-        // --- STRATEGY PATTERN ---
+        // --- STRATEGY PATTERN + APRENDIZADO ---
+        // Risco que a conta já tinha
         BigDecimal totalRisk = account.getBaseRiskScore();
 
+        // Soma dos risco das regras desta transação específica
         for (RiskRuleChecker rule : riskRules) {
             totalRisk = totalRisk.add(rule.check(transaction));
         }
         
+        // Atualizacao do score na transação para auditoria
         transaction.setBaseRiskScore(totalRisk);
 
-        // Decisão final baseada no score calculado
+        // Decisão final baseada no score ACUMULADO
         if (totalRisk.compareTo(new BigDecimal("100")) > 0 || 
             transaction.getAmount().compareTo(new BigDecimal("10000")) > 0) {
             transaction.setStatus(TransactionStatus.REJECTED);
@@ -83,9 +81,15 @@ public class TransactionService {
             transaction.setStatus(TransactionStatus.APPROVED);
         }
 
-        // Atualiza a transação no banco com o novo Status e Score
+        // --- APRENDIZADO ---
+        // Atualizacao do score da CONTA para que a próxima transação já herde esse risco
+        account.setBaseRiskScore(totalRisk);
+        accountRepository.save(account); // <--- Salvando a "memória" da conta
+        
+        // Atualiza a transação no banco
         transactionRepository.save(transaction);
         
+        System.out.println("📈 [APRENDIZADO] Novo Score da Conta " + account.getId() + ": " + totalRisk);
         System.out.println("⚡ [ASSÍNCRONO] Transação " + transaction.getId() + " finalizada como: " + transaction.getStatus());
     }
 
