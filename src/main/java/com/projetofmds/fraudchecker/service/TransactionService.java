@@ -3,10 +3,14 @@ package com.projetofmds.fraudchecker.service;
 import com.projetofmds.fraudchecker.model.Account;
 import com.projetofmds.fraudchecker.model.Transaction;
 import com.projetofmds.fraudchecker.model.enums.TransactionStatus;
+import com.projetofmds.fraudchecker.model.enums.TransactionType;
 import com.projetofmds.fraudchecker.repository.AccountRepository;
 import com.projetofmds.fraudchecker.repository.TransactionRepository;
+import com.projetofmds.fraudchecker.strategy.RiskRuleChecker;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.projetofmds.fraudchecker.dto.TransactionRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,55 +22,45 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
+    
+    // Spring injecao automatica das regras 
+    private final List<RiskRuleChecker> riskRules;
 
-    public Transaction processTransaction(Long accountId, Transaction transaction) {
-        // 1. Buscar a conta
-        Account account = accountRepository.findById(accountId)
+    public Transaction processTransaction(TransactionRequest request) {
+        Account account = accountRepository.findById(request.accountId())
                 .orElseThrow(() -> new RuntimeException("Conta não encontrada!"));
 
-        transaction.setTimestamp(LocalDateTime.now());
+        Transaction transaction = Transaction.builder()
+            .amount(request.amount())
+            .type(TransactionType.valueOf(request.typeString()))
+            .account(account)
+            .timestamp(LocalDateTime.now())
+            .build();
 
-        // 2. Score inicial da conta
-        BigDecimal accountScore = account.getBaseRiskScore();
+        // --- STRATEGY PATTERN ---
+        // score base da conta
+        BigDecimal totalRisk = account.getBaseRiskScore();
 
-        // 3. Regras adicionais de risco
-        BigDecimal valueRisk = transaction.getAmount().divide(new BigDecimal("100"));
-        BigDecimal timeRisk = BigDecimal.ZERO;
-        BigDecimal frequencyRisk = BigDecimal.ZERO;
-
-        // Regra: transações de madrugada
-        int hour = LocalDateTime.now().getHour(); // Dica: use a hora de AGORA para o teste
-        if (hour >= 0 && hour <= 5) {
-            timeRisk = new BigDecimal("20");
+        // Soma do risco de cada regra dinamicamente
+        for (RiskRuleChecker rule : riskRules) {
+            totalRisk = totalRisk.add(rule.check(transaction));
         }
+        
+        transaction.setBaseRiskScore(totalRisk);
+        // ------------------------------------
 
-        // Regra: frequência (última hora)
-        LocalDateTime umHoraAtras = LocalDateTime.now().minusMinutes(60);
-        long recentTxCount = transactionRepository.countTransactionsSince(accountId, umHoraAtras);
-
-        if (recentTxCount > 5) {
-            long excesso = recentTxCount - 5;
-            frequencyRisk = new BigDecimal(excesso).multiply(new BigDecimal("20"));
-        }
-
-        // Score final
-        BigDecimal finalScore = accountScore.add(valueRisk).add(timeRisk).add(frequencyRisk);
-        transaction.setBaseRiskScore(finalScore);
-
-        // 4. Decisão
-        if (finalScore.compareTo(new BigDecimal("100")) > 0 ||
+        // Decisão final
+        if (totalRisk.compareTo(new BigDecimal("100")) > 0 || 
             transaction.getAmount().compareTo(new BigDecimal("10000")) > 0) {
             transaction.setStatus(TransactionStatus.REJECTED);
         } else {
             transaction.setStatus(TransactionStatus.APPROVED);
         }
 
-        transaction.setAccount(account);
         return transactionRepository.save(transaction);
-    } 
-
-    public List<Transaction> getAccountHistory(Long accountId) {
-        return transactionRepository.findByAccountId(accountId);
     }
 
-} 
+    public List<Transaction> getAccountHistory(Long accountId) {
+    return transactionRepository.findByAccountId(accountId);
+}
+}
