@@ -7,10 +7,12 @@ import com.projetofmds.fraudchecker.model.enums.TransactionType;
 import com.projetofmds.fraudchecker.repository.AccountRepository;
 import com.projetofmds.fraudchecker.repository.TransactionRepository;
 import com.projetofmds.fraudchecker.strategy.RiskRuleChecker;
-import com.projetofmds.fraudchecker.dto.TransactionEvent;
-import com.projetofmds.fraudchecker.dto.TransactionRequest;
+import com.projetofmds.fraudchecker.dto.TransactionEventDTO;
+import com.projetofmds.fraudchecker.dto.TransactionRequestDTO;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -22,6 +24,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
@@ -30,7 +33,7 @@ public class TransactionService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public Transaction processTransaction(TransactionRequest request) {
+    public Transaction processTransaction(TransactionRequestDTO request) {
         Account account = accountRepository.findById(request.accountId())
                 .orElseThrow(() -> new RuntimeException("Conta não encontrada!"));
 
@@ -45,7 +48,7 @@ public class TransactionService {
 
         Transaction saved = transactionRepository.save(transaction);
 
-        eventPublisher.publishEvent(new TransactionEvent(
+        eventPublisher.publishEvent(new TransactionEventDTO(
             saved.getId(), 
             account.getId(), 
             saved.getAmount()
@@ -55,7 +58,7 @@ public class TransactionService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void analyzeRisk(TransactionEvent event) {
+    public void analyzeRisk(TransactionEventDTO event) {
         Transaction transaction = transactionRepository.findById(event.transactionId())
                 .orElseThrow(() -> new RuntimeException("Transação não encontrada no processamento posterior"));
         
@@ -89,8 +92,8 @@ public class TransactionService {
         // Atualiza a transação no banco
         transactionRepository.save(transaction);
         
-        System.out.println("📈 [APRENDIZADO] Novo Score da Conta " + account.getId() + ": " + totalRisk);
-        System.out.println("⚡ [ASSÍNCRONO] Transação " + transaction.getId() + " finalizada como: " + transaction.getStatus());
+        log.info("📈 [APRENDIZADO] Novo Score da Conta " + account.getId() + ": " + totalRisk);
+        log.info("⚡ [ASSÍNCRONO] Transação " + transaction.getId() + " finalizada como: " + transaction.getStatus());
     }
 
     public List<Transaction> getAccountHistory(Long accountId) {

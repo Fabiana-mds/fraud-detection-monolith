@@ -1,7 +1,7 @@
 package com.projetofmds.fraudchecker.controller;
 
-import com.projetofmds.fraudchecker.dto.TransactionRequest;
-import com.projetofmds.fraudchecker.dto.TransactionResponse;
+import com.projetofmds.fraudchecker.dto.TransactionRequestDTO;
+import com.projetofmds.fraudchecker.dto.TransactionResponseDTO;
 import com.projetofmds.fraudchecker.model.Transaction;
 import com.projetofmds.fraudchecker.service.TransactionService;
 import jakarta.validation.Valid;
@@ -20,13 +20,13 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     @PostMapping
-    public ResponseEntity<TransactionResponse> createTransaction(@RequestBody @Valid TransactionRequest request) {
+    public ResponseEntity<TransactionResponseDTO> createTransaction(@RequestBody @Valid TransactionRequestDTO request) {
         
         // 1. Chamamos o service passando o DTO (isso vai dar erro no Service por enquanto)
         Transaction transaction = transactionService.processTransaction(request);
         
         // 2. Convertemos a Entidade para o Record de Resposta (Mapeamento manual)
-        TransactionResponse response = new TransactionResponse(
+        TransactionResponseDTO response = new TransactionResponseDTO(
             transaction.getId(),
             transaction.getAmount(),
             transaction.getTimestamp(),

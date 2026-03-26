@@ -3,7 +3,7 @@ package com.projetofmds.fraudchecker.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record TransactionResponse(
+public record TransactionResponseDTO(
     Long Id,
     BigDecimal amount,
     LocalDateTime timestamp,

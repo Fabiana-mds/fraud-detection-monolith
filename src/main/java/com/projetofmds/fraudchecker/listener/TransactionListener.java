@@ -1,6 +1,6 @@
 package com.projetofmds.fraudchecker.listener;
 
-import com.projetofmds.fraudchecker.dto.TransactionEvent;
+import com.projetofmds.fraudchecker.dto.TransactionEventDTO;
 import com.projetofmds.fraudchecker.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 
@@ -19,7 +19,7 @@ public class TransactionListener {
     @org.springframework.transaction.event.TransactionalEventListener(
         phase = org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT
     )
-    public void handleTransactionCreated(TransactionEvent event) {
+    public void handleTransactionCreated(TransactionEventDTO event) {
             try {
             transactionService.analyzeRisk(event);
         } catch (Exception e) {
