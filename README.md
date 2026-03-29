@@ -4,6 +4,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen?style=for-the-badge&logo=springboot)](https://spring.io/projects/spring-boot)
 [![Tests](https://img.shields.io/badge/Tests-13%20Passed-green?style=for-the-badge&logo=junit5)](https://junit.org/junit5/)
 
+Este foi o MVP (Produto Mínimo Viável) onde foquei em Strategy Pattern e regras de negócio.
 Esta é uma API robusta de detecção de fraudes que utiliza **análise heurística assíncrona** para proteger transações financeiras. O sistema avalia o comportamento do usuário em tempo real, atribuindo scores de risco baseados em padrões históricos e regras de negócio dinâmicas.
 
 ---
